@@ -12,11 +12,11 @@ using Xbim.ModelGeometry.Scene;
 
 namespace Xbim.GLTF.IO.Tests
 {
-	public class CompabilityTests : IDisposable
+	public class CompatibilityTests : IDisposable
 	{
 		private string m_XbimPath;
 
-		public CompabilityTests()
+		public CompatibilityTests()
 		{
 			this.m_XbimPath = Path.GetTempFileName();
 			GltfWriter.Version = "2.0"; // To match the version of the deprecated implementation.

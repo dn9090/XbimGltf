@@ -30,9 +30,9 @@ using(var model = IfcStore.Open("Files/House.xBIM"))
 ```
 
 ### Create a GLTF file with the compability API
-The compability API matches the original builder API
+The compatibility API matches the original builder API
 but uses the new builder under the hood.
-Note that the original builder and the compability API is marked as `Obsolete`.
+Note that the original builder and the compatibility API is marked as `Obsolete`.
 ```CSharp
 using(var model = IfcStore.Open("Files/House.xBIM"))
 {
@@ -43,8 +43,8 @@ using(var model = IfcStore.Open("Files/House.xBIM"))
 
 ## Tests
 The ensure that the rework works as expected the ``Xbim.GLTF.IO.Tests` directory
-contains compability tests of all implementations.
-The compability is tested by comparing the output files with the output file of original
+contains compatibility tests of all implementations.
+The compatibility is tested by comparing the output files with the output file of original
 implementation.
 
 The tests are using Xunit and can be run with:
@@ -57,7 +57,7 @@ dotnet test
 Compared to the original implementation the reworks performs up to 35% better.
 Also the pressure on the garbage collector is reduced.
 The `Xbim.GLTF.IO.Benchmarks` directory contains the benchmarks of
-the original implementation, the rework and the compability API.
+the original implementation, the rework and the compatibility API.
 
 Run it with
 ```
