@@ -190,6 +190,8 @@ namespace Xbim.GLTF
 			int byteCount = 0;
 			int size = 0;
 
+			// UNSIGNED_ is used here but the values are casted to
+			// signed types...
 			if(!prevent8Bit && max < byte.MaxValue) // REVIEW: Should min be checked here too?
 			{
 				componentType = Gltf.Accessor.ComponentTypeEnum.UNSIGNED_BYTE;
@@ -204,22 +206,14 @@ namespace Xbim.GLTF
 				byteBuffer = new byte[values.Length * size];
 
 				foreach(int value in values)
-				{
-					byte[] bytes =  BitConverter.GetBytes((short)value);
-					Array.Copy(bytes, 0, byteBuffer, byteCount, bytes.Length);
-					byteCount += bytes.Length;
-				}
+					byteCount += CopyBytes((short)value, byteBuffer, byteCount);
 			} else {
 				componentType = Gltf.Accessor.ComponentTypeEnum.UNSIGNED_INT;
 				size = sizeof(uint);
 				byteBuffer = new byte[values.Length * size];
 
 				foreach(int value in values)
-				{
-					byte[] bytes = BitConverter.GetBytes((int)value);
-					Array.Copy(bytes, 0, byteBuffer, byteCount, bytes.Length);
-					byteCount += bytes.Length;
-				}
+					byteCount += CopyBytes((int)value, byteBuffer, byteCount);
 			}
 
 			// Add padding if neccessary.
@@ -311,6 +305,20 @@ namespace Xbim.GLTF
 			gltf.Scene = 0;
 
 			return gltf;
+		}
+
+		private static int CopyBytes(short value, byte[] buffer, int startIndex)
+		{
+			byte[] bytes = BitConverter.GetBytes(value);
+			Array.Copy(bytes, 0, buffer, startIndex, bytes.Length);
+			return bytes.Length;
+		}
+
+		private static int CopyBytes(int value, byte[] buffer, int startIndex)
+		{
+			byte[] bytes = BitConverter.GetBytes(value);
+			Array.Copy(bytes, 0, buffer, startIndex, bytes.Length);
+			return bytes.Length;
 		}
 	}
 }
