@@ -24,7 +24,7 @@ using(var model = IfcStore.Open("Files/House.ifc"))
 using(var model = IfcStore.Open("Files/House.xBIM"))
 {
 	var builder = new XbimGltfBuilder(model);
-	builder.Build().SaveTo("Files/House.gltf");
+	builder.Build().SaveAs("Files/House.gltf");
 }
 
 ```
@@ -37,7 +37,7 @@ Note that the original builder and the compability API is marked as `Obsolete`.
 using(var model = IfcStore.Open("Files/House.xBIM"))
 {
 	var builder = new Builder();
-	builder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveTo("Files/House.gltf");
+	builder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs("Files/House.gltf");
 }
 ```
 

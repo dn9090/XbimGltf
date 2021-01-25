@@ -5,7 +5,7 @@ namespace Xbim.GLTF
 {
 	public static class GltfExtensions
 	{
-		public static void SaveTo(this Gltf.Gltf gltf, string filePath) =>
+		public static void SaveAs(this Gltf.Gltf gltf, string filePath) =>
 			glTFLoader.Interface.SaveModel(gltf, filePath);
 	}
 }

@@ -35,9 +35,9 @@ namespace Xbim.GLTF.IO.Tests
 				var compabilityBuilder = new Builder();
 				var builder = new XbimGltfBuilder(model);
 
-				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveTo(deprecatedPath);
-				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveTo(compabilityPath);
-				builder.Build().SaveTo(builderPath);
+				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(deprecatedPath);
+				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(compabilityPath);
+				builder.Build().SaveAs(builderPath);
 			}
 
 			Assert.True(FilesEqual(deprecatedPath, compabilityPath));
@@ -59,9 +59,9 @@ namespace Xbim.GLTF.IO.Tests
 				var compabilityBuilder = new Builder();
 				var builder = new XbimGltfBuilder(model);
 
-				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveTo(deprecatedPath);
-				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveTo(compabilityPath);
-				builder.Build().SaveTo(builderPath);
+				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(deprecatedPath);
+				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(compabilityPath);
+				builder.Build().SaveAs(builderPath);
 			}
 		
 			Assert.True(FilesEqual(deprecatedPath, compabilityPath));
@@ -85,10 +85,10 @@ namespace Xbim.GLTF.IO.Tests
 
 				var exclude = new List<Type>() { typeof(IIfcWindow) };
 
-				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity, exclude: exclude).SaveTo(deprecatedPath);
-				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity, exclude: exclude).SaveTo(compabilityPath);
+				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity, exclude: exclude).SaveAs(deprecatedPath);
+				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity, exclude: exclude).SaveAs(compabilityPath);
 				builder.ExcludedTypes.UnionWith(exclude);
-				builder.Build().SaveTo(builderPath);
+				builder.Build().SaveAs(builderPath);
 			}
 		
 			Assert.True(FilesEqual(deprecatedPath, compabilityPath));
