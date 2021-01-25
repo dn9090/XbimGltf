@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
+    <PackageReference Include="Xbim.Geometry" Version="5.1.402-develop" />
+    <PackageReference Include="Xbim.Essentials" Version="5.1.323" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xbim.GLTF.IO\Xbim.GLTF.IO.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Files\*.*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>  
+  </ItemGroup>
+  
+</Project>
