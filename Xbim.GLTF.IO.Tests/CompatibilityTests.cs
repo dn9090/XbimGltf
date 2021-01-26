@@ -19,7 +19,6 @@ namespace Xbim.GLTF.IO.Tests
 		public CompatibilityTests()
 		{
 			this.m_XbimPath = Path.GetTempFileName();
-			GltfWriter.Version = "2.0"; // To match the version of the deprecated implementation.
 		}
 
 		[Fact]

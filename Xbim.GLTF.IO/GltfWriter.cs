@@ -7,9 +7,9 @@ namespace Xbim.GLTF
 {
 	internal class GltfWriter
 	{
-		public static string Generator = "Xbim.GLTF.IO";
+		public static readonly string Generator = "Xbim.GLTF.IO";
 		
-		public static string Version = "3.0";
+		public static readonly string Version = "2.0";
 
 		private Gltf.Node m_Root;
 
