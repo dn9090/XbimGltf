@@ -69,7 +69,7 @@ namespace Xbim.GLTF
 		{
 			var writer = new GltfWriter();
 			var queue = new BlockingCollection<GeometryData>();
-			var worker = new Thread(() => MeshBuilderWorker(queue, writer, this.m_Model.ModelFactors.OneMeter));
+			var worker = new Thread(() => MeshBuilderWorker(queue, writer));
 			worker.Start();
 
 			using(var geometryStore = this.m_Model.GeometryStore)
@@ -168,7 +168,7 @@ namespace Xbim.GLTF
 			}
 		}
 
-		private void MeshBuilderWorker(BlockingCollection<GeometryData> queue, GltfWriter writer, double modelFactor)
+		private void MeshBuilderWorker(BlockingCollection<GeometryData> queue, GltfWriter writer)
 		{
 			var geometries = new Dictionary<int, int[]>();
 			
