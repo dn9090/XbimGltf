@@ -11,7 +11,7 @@ namespace Xbim.GLTF
 		
 		public static readonly string Version = "2.0";
 
-		private Gltf.Node m_Root;
+		private List<Gltf.Node> m_Nodes;
 
 		private List<Gltf.Accessor> m_Accessors;
 
@@ -19,7 +19,7 @@ namespace Xbim.GLTF
 
 		private List<Gltf.Mesh> m_Meshes;
 
-		private List<Gltf.Node> m_Nodes;
+		private Gltf.Node m_Root;
 
 		private List<byte> m_IndexBuffer;
 

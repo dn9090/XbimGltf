@@ -140,8 +140,7 @@ namespace Xbim.GLTF
 
 					writer.WriteDoubleSided(material, CheckDoubleSidedSurface(shapeGeometry));
 
-					var geometryData = new GeometryData(shapeGeometry, targetMesh, material);
-					queue.Add(geometryData);
+					queue.Add(new GeometryData(shapeGeometry, targetMesh, material));
 				}
 			}
 
