@@ -147,6 +147,7 @@ namespace Xbim.GLTF
 
 			queue.CompleteAdding();
 			worker.Join();
+			queue.Dispose();
 
 			return writer.ToGltf();
 		}
@@ -173,9 +174,10 @@ namespace Xbim.GLTF
 			
 			while(!queue.IsCompleted)
 			{
-				var geometryData = queue.Take();
-				var shapeGeometry = geometryData.shapeData;
+				if(!queue.TryTake(out GeometryData geometryData, 100))
+					continue;
 
+				var shapeGeometry = geometryData.shapeData;
 				int indexAccessor = -1, normalsAccessor = -1, vertexAccessor = -1;
 
 				if(shapeGeometry.ReferenceCount > 1)
