@@ -2,111 +2,72 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Xbim.Common;
-using Xbim.Common.Geometry;
 using Xbim.GLTF.SemanticExport;
 using Xbim.Ifc;
 using Xbim.Ifc4.Interfaces;
-using Xbim.Ifc4.MeasureResource;
 using Xbim.ModelGeometry.Scene;
 
 namespace Xbim.GLTF.ExportHelpers
 {
-    public class MultipleFilesExporter
-    {
-        int[] elemsToExport;
+	public class MultipleFilesExporter
+	{
+		public void ExportByStorey(string fileName, bool exportSemantic = true)
+		{			
+			var ifcName = Path.ChangeExtension(fileName, "ifc");
+			using(var store = IfcStore.Open(ifcName))
+				ExportByStorey(store, exportSemantic);
+		}
 
-        bool Filter(int elementId, IModel model)
-        {
-            return !elemsToExport.Contains(elementId);
-        }
+		public void ExportByStorey(IfcStore store, bool exportSemantic = true)
+		{
+			var directoryName = Path.GetDirectoryName(store.FileName);
 
-        public void ExportByStorey(string fileName)
-        {
-            FileInfo f = new FileInfo(fileName);
-            
-            var ifcName = Path.ChangeExtension(fileName, "ifc");
-            using (var store = IfcStore.Open(ifcName))
-            {
-                ExportByStorey(store);
-            }
-        }
+			// Create the model context.
+			if(store.GeometryStore.IsEmpty)
+			{
+				var context = new Xbim3DModelContext(store);
+				context.CreateContext();
+			}
 
-        public void ExportByStorey(IfcStore store, bool exportSemantic = true)
-        {
-            var f = new FileInfo(store.FileName);
-            var dir = f.Directory;
-            if (store.GeometryStore.IsEmpty)
-            {
-                var context = new Xbim3DModelContext(store);
-                context.CreateContext();
-            }
+			var elements = new HashSet<int>();
 
-            foreach (var storey in store.Instances.OfType<IIfcBuildingStorey>())
-            {
-                // prepare filter
-                var rels = store.Instances.OfType<IIfcRelContainedInSpatialStructure>().Where(x => x.RelatingStructure.EntityLabel == storey.EntityLabel);
-                List<int> els = new List<int>();
-                foreach (var rel in rels)
-                {
-                    // entities directly in the relation
-                    //
-                    var entitiesInStoreyRel = rel.RelatedElements.Select(x => x.EntityLabel).ToList();
-                    els.AddRange(entitiesInStoreyRel);
+			var builder = new XbimGltfBuilder(store);
+			builder.Filter = (shape) => !elements.Contains(shape.IfcProductLabel);
 
-                    // decomposed elements
-                    // 
-                    var relsToComposingEntities = store.Instances.OfType<IIfcRelAggregates>().Where(x => entitiesInStoreyRel.Contains(x.RelatingObject.EntityLabel));
-                    foreach (var relToComposingEntities in relsToComposingEntities)
-                    {
-                        els.AddRange(relToComposingEntities.RelatedObjects.Select(x => x.EntityLabel).ToList());  
-                    }
-                }
+			foreach(var storey in store.Instances.OfType<IIfcBuildingStorey>())
+			{
+				var rels = store.Instances.OfType<IIfcRelContainedInSpatialStructure>()
+					.Where(x => x.RelatingStructure.EntityLabel == storey.EntityLabel);
+				
+				elements.Clear();
 
-                // only export once
-                elemsToExport = els.Distinct().ToArray();
+				// Find the elements of the current storey.
+				foreach(var rel in rels)
+				{
+					var entitiesInStorey = rel.RelatedElements.Select(x => x.EntityLabel).ToHashSet();
+					elements.UnionWith(entitiesInStorey);
 
-                // write gltf
-                //
-                var bldr = new Builder();
-                bldr.BufferInBase64 = true;
-                bldr.CustomFilter = this.Filter;
+					var relsToComposingEntities = store.Instances.OfType<IIfcRelAggregates>()
+						.Where(x => entitiesInStorey.Contains(x.RelatingObject.EntityLabel));
 
-                var storeyName = storey.Name.ToString();
-                if (HasInvalidChars(storeyName))
-                {
-                    storeyName = storey.EntityLabel.ToString();
-                }
-                
-                var outName = Path.Combine(
-                    dir.FullName,
-                    f.Name + "." + storeyName + ".gltf"
-                    );
-                var ret = bldr.BuildInstancedScene(store, XbimMatrix3D.Identity);
-                if (ret != null && exportSemantic)
-                {
-                    // actual write if not empty model.
-                    //
-                    glTFLoader.Interface.SaveModel(ret, outName);
+					foreach(var relToComposingEntities in relsToComposingEntities)
+						elements.UnionWith(relToComposingEntities.RelatedObjects.Select(x => x.EntityLabel));  
+				}
 
-                    // write json
-                    //
-                    var jsonFileName = Path.ChangeExtension(outName, "json");
-                    var bme = new BuildingModelExtractor();
-                    bme.CustomFilter = this.Filter;
-                    var rep = bme.GetModel(store);
-                    rep.Export(jsonFileName);
-                }
-            }
-        }
+				var storeyName = string.Concat(storey.Name.ToString().Split(Path.GetInvalidFileNameChars()));
+				var fileName = Path.GetFileNameWithoutExtension(store.FileName) + "." + storeyName + ".gltf";
+				var filePath = Path.Combine(directoryName, fileName);
 
-        private bool HasInvalidChars(string storeyName)
-        {
-            var invalid = Path.GetInvalidFileNameChars();
-            var broken = storeyName.Split(invalid);
-            return (broken.Length != 1);
-        }
-    }
+				builder.Build().SaveAs(filePath);
+				
+				if(exportSemantic)
+				{
+					var bme = new BuildingModelExtractor();
+					bme.CustomFilter = (elementId, model) => !elements.Contains(elementId);
+					var buildingModel = bme.GetModel(store);
+					buildingModel.Export(Path.ChangeExtension(filePath, "json"));
+				}
+			}
+		}
+	}
 }
