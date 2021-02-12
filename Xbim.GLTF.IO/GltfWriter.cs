@@ -277,7 +277,7 @@ namespace Xbim.GLTF
 			return this.m_Accessors.Count - 1;
 		}
 
-		public Gltf.Gltf ToGltf(bool mergePrimitives = true)
+		public Gltf.Gltf ToGltf()
 		{
 			var gltf = new Gltf.Gltf();
 			gltf.Asset = new Gltf.Asset()
