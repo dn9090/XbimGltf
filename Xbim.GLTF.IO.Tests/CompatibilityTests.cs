@@ -14,73 +14,79 @@ namespace Xbim.GLTF.IO.Tests
 {
 	public class CompatibilityTests : IDisposable
 	{
-		private string m_XbimPath;
+		private string m_XbimSmall;
+
+		private string m_XbimLarge;
 
 		public CompatibilityTests()
 		{
-			this.m_XbimPath = Path.GetTempFileName();
+			this.m_XbimSmall = XbimFileUtility.CreateXbimFile("Files/OneWallTwoWindows.ifc");
+			this.m_XbimLarge = XbimFileUtility.CreateXbimFile("Files/231110AC11-FZK-Haus-IFC.ifc");
 		}
 
 		[Fact]
 		public void Compatible_Default()
 		{
-			string deprecatedPath = Path.GetTempFileName();
-			string compabilityPath = Path.GetTempFileName();
-			string builderPath = Path.GetTempFileName();
+			string deprecatedPath = XbimFileUtility.GetTempGltfFile();
+			string compabilityPath = XbimFileUtility.GetTempGltfFile();
+			string builderPath = XbimFileUtility.GetTempGltfFile();
 
-			using(var model = IfcStore.Open(CreateXbimFile("Files/OneWallTwoWindows.ifc")))
+			using(var model = IfcStore.Open(this.m_XbimSmall))
 			{
 				var deprecatedBuilder = new Xbim.GLTF.Deprecated.Builder();
 				var compabilityBuilder = new Builder();
 				var builder = new XbimGltfBuilder(model);
+				builder.MergePrimitives = true;
 
 				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(deprecatedPath);
 				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(compabilityPath);
 				builder.Build().SaveAs(builderPath);
 			}
 
-			Assert.True(FilesEqual(deprecatedPath, compabilityPath));
-			Assert.True(FilesEqual(deprecatedPath, builderPath));
+			Assert.True(XbimFileUtility.FilesEqual(deprecatedPath, compabilityPath));
+			Assert.True(XbimFileUtility.FilesEqual(deprecatedPath, builderPath));
 
-			CleanupFiles(deprecatedPath, compabilityPath, builderPath);
+			XbimFileUtility.CleanupFiles(deprecatedPath, compabilityPath, builderPath);
 		}
 
 		[Fact]
 		public void Compatible_Default_Large()
 		{
-			string deprecatedPath = Path.GetTempFileName();
-			string compabilityPath = Path.GetTempFileName();
-			string builderPath = Path.GetTempFileName();
+			string deprecatedPath = XbimFileUtility.GetTempGltfFile();
+			string compabilityPath = XbimFileUtility.GetTempGltfFile();
+			string builderPath = XbimFileUtility.GetTempGltfFile();
 
-			using(var model = IfcStore.Open(CreateXbimFile("Files/231110AC11-FZK-Haus-IFC.ifc")))
+			using(var model = IfcStore.Open(this.m_XbimLarge))
 			{
 				var deprecatedBuilder = new Xbim.GLTF.Deprecated.Builder();
 				var compabilityBuilder = new Builder();
 				var builder = new XbimGltfBuilder(model);
+				builder.MergePrimitives = true;
 
 				deprecatedBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(deprecatedPath);
 				compabilityBuilder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs(compabilityPath);
 				builder.Build().SaveAs(builderPath);
 			}
 		
-			Assert.True(FilesEqual(deprecatedPath, compabilityPath));
-			Assert.True(FilesEqual(deprecatedPath, builderPath));
+			Assert.True(XbimFileUtility.FilesEqual(deprecatedPath, compabilityPath));
+			Assert.True(XbimFileUtility.FilesEqual(deprecatedPath, builderPath));
 
-			CleanupFiles(deprecatedPath, compabilityPath, builderPath);
+			XbimFileUtility.CleanupFiles(deprecatedPath, compabilityPath, builderPath);
 		}
 
 		[Fact]
 		public void Compatible_TypeFilter()
 		{
-			string deprecatedPath = Path.GetTempFileName();
-			string compabilityPath = Path.GetTempFileName();
-			string builderPath = Path.GetTempFileName();
+			string deprecatedPath = XbimFileUtility.GetTempGltfFile();
+			string compabilityPath = XbimFileUtility.GetTempGltfFile();
+			string builderPath = XbimFileUtility.GetTempGltfFile();
 
-			using(var model = IfcStore.Open(CreateXbimFile("Files/OneWallTwoWindows.ifc")))
+			using(var model = IfcStore.Open(this.m_XbimSmall))
 			{
 				var deprecatedBuilder = new Xbim.GLTF.Deprecated.Builder();
 				var compabilityBuilder = new Builder();
 				var builder = new XbimGltfBuilder(model);
+				builder.MergePrimitives = true;
 
 				var exclude = new List<Type>() { typeof(IIfcWindow) };
 
@@ -90,51 +96,15 @@ namespace Xbim.GLTF.IO.Tests
 				builder.Build().SaveAs(builderPath);
 			}
 		
-			Assert.True(FilesEqual(deprecatedPath, compabilityPath));
-			Assert.True(FilesEqual(deprecatedPath, builderPath));
+			Assert.True(XbimFileUtility.FilesEqual(deprecatedPath, compabilityPath));
+			Assert.True(XbimFileUtility.FilesEqual(deprecatedPath, builderPath));
 
-			CleanupFiles(deprecatedPath, compabilityPath, builderPath);
+			XbimFileUtility.CleanupFiles(deprecatedPath, compabilityPath, builderPath);
 		}
 
 		public void Dispose()
 		{
-			try
-			{
-				File.Delete(Path.ChangeExtension(this.m_XbimPath, ".jfm"));
-				File.Delete(this.m_XbimPath);
-			} catch {}
+			XbimFileUtility.CleanupFiles(this.m_XbimSmall, this.m_XbimLarge);
 		}
-
-		private string CreateXbimFile(string filePath)
-		{
-			string path = Path.ChangeExtension(this.m_XbimPath, ".xBIM");
-			File.Move(this.m_XbimPath, path);
-			this.m_XbimPath = path;
-
-			IfcStore.ModelProviderFactory.UseHeuristicModelProvider();
-			using(var model = IfcStore.Open(filePath))
-			{
-				var context = new Xbim3DModelContext(model);
-				context.CreateContext(null, false);
-				model.SaveAs(this.m_XbimPath);
-			}
-
-			return this.m_XbimPath;
-		}
-
-		private void CleanupFiles(params string[] filePaths)
-		{
-			try
-			{
-				foreach(string filePath in filePaths)
-				{
-					File.Delete(filePath);
-					File.Delete(Path.ChangeExtension(filePath, ".jfm"));
-				}
-			} catch {}
-		}
-
-		public static bool FilesEqual(string firstPath, string secondPath) =>
-			File.ReadAllBytes(firstPath).SequenceEqual(File.ReadAllBytes(secondPath));
 	}
 }

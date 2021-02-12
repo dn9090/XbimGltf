@@ -13,6 +13,8 @@ namespace Xbim.GLTF
 
 		private List<Gltf.Node> m_Nodes;
 
+		private List<int> m_RootNodes;
+
 		private List<Gltf.Accessor> m_Accessors;
 
 		private List<Gltf.Material> m_Materials;
@@ -31,6 +33,7 @@ namespace Xbim.GLTF
 			this.m_Materials = new List<Gltf.Material>();
 			this.m_Meshes = new List<Gltf.Mesh>();
 			this.m_Nodes = new List<Gltf.Node>();
+			this.m_RootNodes = new List<int>();
 			this.m_IndexBuffer = new List<byte>();
 			this.m_VertexBuffer = new List<byte>();
 
@@ -53,17 +56,52 @@ namespace Xbim.GLTF
 
 		public int WriteNode(string name, float[] matrix)
 		{
+			var index = this.m_Nodes.Count;
+
 			this.m_Nodes.Add(new Gltf.Node()
 			{
 				Name = name,
 				Matrix = matrix
 			});
+			this.m_RootNodes.Add(index);
 
-			return this.m_Nodes.Count - 1;
+			return index;
 		}
 
 		public int WriteNode(string name, float[] matrix, int mesh)
 		{
+			var index = this.m_Nodes.Count;
+			
+			this.m_Nodes.Add(new Gltf.Node()
+			{
+				Name = name,
+				Matrix = matrix,
+				Mesh = mesh
+			});
+			this.m_RootNodes.Add(index);
+
+			return index;
+		}
+
+		public int WriteNode(string name, float[] matrix, int[] children)
+		{
+			var index = this.m_Nodes.Count;
+			
+			this.m_Nodes.Add(new Gltf.Node()
+			{
+				Name = name,
+				Matrix = matrix,
+				Children = children
+			});
+			this.m_RootNodes.Add(index);
+
+			return index;
+		}
+
+		public int WriteSubNode(string name, float[] matrix, int mesh)
+		{
+			var index = this.m_Nodes.Count;
+			
 			this.m_Nodes.Add(new Gltf.Node()
 			{
 				Name = name,
@@ -71,7 +109,7 @@ namespace Xbim.GLTF
 				Mesh = mesh
 			});
 
-			return this.m_Nodes.Count - 1;
+			return index;
 		}
 
 		public int WriteMaterial(string name, float red, float green, float blue, float alpha)
@@ -239,7 +277,7 @@ namespace Xbim.GLTF
 			return this.m_Accessors.Count - 1;
 		}
 
-		public Gltf.Gltf ToGltf()
+		public Gltf.Gltf ToGltf(bool mergePrimitives = true)
 		{
 			var gltf = new Gltf.Gltf();
 			gltf.Asset = new Gltf.Asset()
@@ -289,11 +327,7 @@ namespace Xbim.GLTF
 			sb.Append(Convert.ToBase64String(bytes));
 			buffer.Uri = sb.ToString();
 
-			int[] nodes = new int[this.m_Nodes.Count - 1];
-			for(int i = 1; i < this.m_Nodes.Count; ++i)
-				nodes[i - 1] = i;
-
-			this.m_Root.Children = nodes;
+			this.m_Root.Children = this.m_RootNodes.ToArray();
 
 			gltf.BufferViews = new Gltf.BufferView[] { indexBufferView, vertexBufferView };
 			gltf.Buffers = new Gltf.Buffer[] { buffer };
@@ -319,6 +353,16 @@ namespace Xbim.GLTF
 			byte[] bytes = BitConverter.GetBytes(value);
 			Array.Copy(bytes, 0, buffer, startIndex, bytes.Length);
 			return bytes.Length;
+		}
+
+		private static Gltf.Mesh CombineMeshes(string name, Gltf.Mesh[] meshes)
+		{
+			var primitives = new List<Gltf.MeshPrimitive>();
+
+			foreach(var mesh in meshes)
+				primitives.AddRange(mesh.Primitives);
+			
+			return new Gltf.Mesh() { Name = name, Primitives = primitives.ToArray() };
 		}
 	}
 }

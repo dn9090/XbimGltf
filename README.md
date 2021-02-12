@@ -28,6 +28,7 @@ using(var model = IfcStore.Open("Files/House.xBIM"))
 }
 
 ```
+Please notice that new builder uses other default configurations than the old one.
 
 ### Create a GLTF file with the compability API
 The compatibility API matches the original builder API
@@ -40,6 +41,40 @@ using(var model = IfcStore.Open("Files/House.xBIM"))
 	builder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs("Files/House.gltf");
 }
 ```
+
+### Merge Primitives
+There are two different options to create the nodes from the IFC file.
+The first one creates a hierarchy with separate child nodes for each mesh primitive:
+```CSharp
+using(var model = IfcStore.Open("Files/House.xBIM"))
+{
+	var builder = new Builder();
+	builder.MergePrimitives = false; // This is the default value.
+	builder.BuildInstancedScene(model, XbimMatrix3D.Identity).SaveAs("Files/House.gltf");
+}
+```
+The resulting hierarchy should look similiar to this:
+```
+Root
+| - Wall #10
+| | - Shape #1001
+| - Door #20
+| | - Shape #2001
+| - Window #30
+| | - Shape #3001
+| | - Shape #3002
+| - Wall #40
+| | - Shape #4001
+```
+If `MergePrimitives` is set to `true` the hierarchy will be flat:
+```
+Root
+| - Wall #10
+| - Door #20
+| - Window #30
+| - Wall #40
+```
+In the flat hierarchy a mesh can consist of multiple primitives.
 
 ## Tests
 The ensure that the rework works as expected the ``Xbim.GLTF.IO.Tests` directory
