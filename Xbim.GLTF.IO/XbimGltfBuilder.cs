@@ -103,8 +103,8 @@ namespace Xbim.GLTF
 					styleMap.Add(styleId, material);
 				}
 
-				var excludedTypes = GetDefaultExclusions();
-				var shapeInstances = GetShapeInstances(geometryReader, excludedTypes);
+				var excludedTypes = XbimShapeUtility.GetDefaultExclusions(this.m_Model, this.m_ExcludedTypes);
+				var shapeInstances = XbimShapeUtility.GetShapeInstances(geometryReader, excludedTypes);
 				
 				foreach(var shapeInstance in shapeInstances.OrderBy(x => x.IfcProductLabel))
 				{
@@ -116,9 +116,22 @@ namespace Xbim.GLTF
 					if(shapeGeometry.Format != (byte)XbimGeometryType.PolyhedronBinary)
 						continue;
 
+					int shapeLabel = shapeGeometry.IfcShapeLabel;
+
+					// This is a fix for an issue with the geometry IfcShapeLabel.
+					// For some reason the IfcShapeLabel of walls consisting of boolean operation is
+					// the same as the IfcProductLabel. This fix only applies if a shape hierarchy is build.
+					if(!this.MergePrimitives && shapeGeometry.IfcShapeLabel == shapeInstance.IfcProductLabel)
+					{
+						var fixShapeInstance = XbimShapeUtility.FixShapeInstance(geometryReader, shapeInstance.IfcProductLabel);
+
+						if(fixShapeInstance != null)
+							shapeLabel = geometryReader.ShapeGeometry(fixShapeInstance.ShapeGeometryLabel).IfcShapeLabel;
+					}
+
 					// Prepare the material that gets assigned to the mesh.
 					// If the color id is not in the known styles create a new material.
-					int material = -1, colorId = GetColorId(shapeInstance);
+					int material = -1, colorId = XbimShapeUtility.GetColorId(shapeInstance);
 
 					if(!styleMap.TryGetValue(colorId, out material))
 					{
@@ -127,9 +140,9 @@ namespace Xbim.GLTF
 						styleMap.Add(colorId, material);
 					}
 
-					writer.WriteDoubleSided(material, CheckDoubleSidedSurface(shapeGeometry));
+					writer.WriteDoubleSided(material, XbimShapeUtility.IsSurfaceDoubleSided(this.m_Model, shapeGeometry));
 
-					shapeQueue.Add(new ShapeData(shapeInstance, shapeGeometry, material));
+					shapeQueue.Add(new ShapeData(shapeInstance, shapeGeometry, shapeLabel, material));
 				}
 			}
 
@@ -147,13 +160,16 @@ namespace Xbim.GLTF
 			public XbimShapeInstance shapeInstance;
 
 			public IXbimShapeGeometryData shapeGeometry;
-		
+
+			public int shapeLabel;
+
 			public int material;
 
-			public ShapeData(XbimShapeInstance shapeInstance, IXbimShapeGeometryData shapeGeometry, int material)
+			public ShapeData(XbimShapeInstance shapeInstance, IXbimShapeGeometryData shapeGeometry, int shapeLabel, int material)
 			{
 				this.shapeInstance = shapeInstance;
 				this.shapeGeometry = shapeGeometry;
+				this.shapeLabel = shapeLabel;
 				this.material = material;
 			}
 		}
@@ -175,11 +191,11 @@ namespace Xbim.GLTF
 				// primitives from all shapes that match the product label.
 				if(currentProductLabel != shapeInstance.IfcProductLabel)
 				{
-					var entity = this.m_Model.Instances[shapeInstance.IfcProductLabel] as IIfcProduct;
+					var product = this.m_Model.Instances[shapeInstance.IfcProductLabel] as IIfcProduct;
 					var transform = TransformToMeters(shapeInstance.Transformation);
-					var mesh = writer.WriteMesh($"Instance {shapeInstance.IfcProductLabel}"); // @Separate: This needs to be created for every shape.
-					var node = writer.WriteNode($"{entity.Name} #{entity.EntityLabel}", transform.ToFloatArray(), mesh); // @Separate: This needs to be created for every shape. Also this needs to be added to a parent.
-				
+					var mesh = writer.WriteMesh($"Instance {shapeInstance.IfcProductLabel}");
+					var node = writer.WriteNode($"{product.Name} #{product.EntityLabel}", transform.ToFloatArray(), mesh);
+
 					currentProductLabel = shapeInstance.IfcProductLabel;
 					targetMesh = mesh;
 				}
@@ -195,6 +211,7 @@ namespace Xbim.GLTF
 			int currentProductLabel = -1;
 			IIfcProduct currentProduct = null;
 			var children = new List<int>();
+			var identity = XbimMatrix3D.Identity.ToFloatArray();
 
 			while(!shapeQueue.IsCompleted)
 			{
@@ -203,14 +220,14 @@ namespace Xbim.GLTF
 			
 				var shapeInstance = shapeData.shapeInstance;
 				var shapeGeometry = shapeData.shapeGeometry;
-
+				
 				// Check if the product label changed.
 				// If there are child nodes 
 				if(currentProductLabel != shapeInstance.IfcProductLabel)
 				{
 					if(children.Count > 0)
 					{
-						writer.WriteNode($"{currentProduct.Name} #{currentProduct.EntityLabel}", XbimMatrix3D.Identity.ToFloatArray(), children.ToArray());
+						writer.WriteNode($"{currentProduct.Name} #{currentProduct.GlobalId} #{currentProduct.EntityLabel}", identity, children.ToArray());
 						children.Clear();
 					}
 
@@ -220,7 +237,7 @@ namespace Xbim.GLTF
 
 				var transform = TransformToMeters(shapeInstance.Transformation);
 				var mesh = writer.WriteMesh($"Instance {shapeInstance.IfcProductLabel}");
-				var node = writer.WriteSubNode($"Shape #{shapeGeometry.IfcShapeLabel}", transform.ToFloatArray(), mesh);
+				var node = writer.WriteSubNode($"Shape #{currentProduct.GlobalId} #{shapeData.shapeLabel}", transform.ToFloatArray(), mesh);
 
 				children.Add(node);
 
@@ -285,37 +302,6 @@ namespace Xbim.GLTF
 			}
 		}
 
-		private IEnumerable<XbimShapeInstance> GetShapeInstances(IGeometryStoreReader geometryReader, HashSet<short> excludedTypes) =>
-			geometryReader.ShapeInstances.Where(shape =>
-				shape.RepresentationType == XbimGeometryRepresentationType.OpeningsAndAdditionsIncluded
-				&& !excludedTypes.Contains(shape.IfcTypeId));
-
-		private HashSet<short> GetDefaultExclusions()
-		{
-			var excluded = new HashSet<short>();
-
-			if(this.m_ExcludedTypes == null)
-				return excluded;
-
-			foreach(var type in this.m_ExcludedTypes)
-			{
-				ExpressType expressType;
-
-				if(type.IsInterface && type.Name.StartsWith("IIfc"))
-					expressType = this.m_Model.Metadata.ExpressType(type.Name.Substring(1).ToUpper());
-				else
-					expressType = this.m_Model.Metadata.ExpressType(type);
-				
-				if(expressType == null)
-					continue;
-				
-				foreach(var subType in expressType.NonAbstractSubTypes)
-					excluded.Add(subType.TypeId);
-			}
-			
-			return excluded;
-		}
-
 		private XbimColour GetColorFromSurfaceStyle(int styleId, out string name)
 		{
 			var surfaceStyle = this.m_Model.Instances[styleId] as IIfcSurfaceStyle;
@@ -338,17 +324,6 @@ namespace Xbim.GLTF
 			return s_ColorMap[expressType.Name]; // I don't know what this does...
 		}
 
-		private bool CheckDoubleSidedSurface(IXbimShapeGeometryData shapeGeometry)
-		{
-			var representationItem = this.m_Model.Instances[shapeGeometry.IfcShapeLabel];
-
-			if(representationItem == null) // REVIEW: Is this check necessary?
-				return false;
-
-			return representationItem is IIfcFaceBasedSurfaceModel
-				|| representationItem is IIfcShellBasedSurfaceModel;
-		}
-
 		private XbimMatrix3D TransformToMeters(XbimMatrix3D matrix)
 		{
 			matrix.OffsetX /= this.m_Model.ModelFactors.OneMeter;
@@ -356,10 +331,5 @@ namespace Xbim.GLTF
 			matrix.OffsetZ /= this.m_Model.ModelFactors.OneMeter;
 			return XbimMatrix3D.Multiply(matrix, this.m_Transform);
 		}
-
-		private static int GetColorId(IXbimShapeInstanceData shapeInstance) =>
-			shapeInstance.StyleLabel > 0
-			? shapeInstance.StyleLabel
-			: shapeInstance.IfcTypeId * -1;
 	}
 }

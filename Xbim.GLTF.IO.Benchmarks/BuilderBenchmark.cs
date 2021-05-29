@@ -55,6 +55,14 @@ namespace Xbim.GLTF.IO.Benchmarks
 		}
 
 		[Benchmark]
+		public void Convert_Hierarchy()
+		{
+			var builder = new XbimGltfBuilder(this.m_Model);
+			builder.MergePrimitives = false;
+			builder.Build();
+		}
+
+		[Benchmark]
 		public void Convert_Compatibility()
 		{
 			var builder = new Xbim.GLTF.Builder();
